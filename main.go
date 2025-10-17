@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync/atomic"
@@ -47,6 +48,25 @@ func main() {
 	mux.Handle("/app/", cfg.middlewareMetricsInc(fsHandler))
 	mux.HandleFunc("GET /admin/metrics", cfg.metricsHandler)
 	mux.HandleFunc("POST /admin/reset", cfg.metricsResetHandler)
+	mux.HandleFunc("POST /api/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Body string `json:"body"`
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			w.WriteHeader(400)
+			w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+			return
+		}
+		if len(body.Body) > 140 {
+			w.WriteHeader(400)
+			w.Write([]byte("{\"error\": \"Chirp is too long\"}"))
+			return
+		}
+		w.WriteHeader(200)
+		w.Write([]byte("{\"valid\": true}"))
+	})
+
 	server := http.Server{
 		Handler: mux,
 		Addr:    ":8080",
