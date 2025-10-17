@@ -33,15 +33,15 @@ func (cfg *apiConfig) metricsResetHandler(w http.ResponseWriter, r *http.Request
 func main() {
 	cfg := &apiConfig{}
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(200)
 		w.Write([]byte("OK"))
 	})
 	fsHandler := http.StripPrefix("/app", http.FileServer(http.Dir(".")))
 	mux.Handle("/app/", cfg.middlewareMetricsInc(fsHandler))
-	mux.HandleFunc("GET /metrics", cfg.metricsHandler)
-	mux.HandleFunc("POST /reset", cfg.metricsResetHandler)
+	mux.HandleFunc("GET /api/metrics", cfg.metricsHandler)
+	mux.HandleFunc("POST /api/reset", cfg.metricsResetHandler)
 	server := http.Server{
 		Handler: mux,
 		Addr:    ":8080",
