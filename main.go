@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync/atomic"
 )
 
@@ -36,6 +37,8 @@ func (cfg *apiConfig) metricsResetHandler(w http.ResponseWriter, r *http.Request
 	w.Write([]byte("Metrics reset successfully."))
 }
 
+var profaneWords = []string{"kerfuffle", "sharbert", "fornax"}
+
 func main() {
 	cfg := &apiConfig{}
 	mux := http.NewServeMux()
@@ -63,8 +66,21 @@ func main() {
 			w.Write([]byte("{\"error\": \"Chirp is too long\"}"))
 			return
 		}
+		oldWords := strings.Split(body.Body, " ")
+		newWords := make([]string, len(oldWords))
+		for i, word := range oldWords {
+			for _, profaneWord := range profaneWords {
+				if strings.EqualFold(strings.ToLower(word), strings.ToLower(profaneWord)) {
+					newWords[i] = "****"
+					break
+				} else {
+					newWords[i] = word
+				}
+			}
+		}
+		sanitized := strings.Join(newWords, " ")
 		w.WriteHeader(200)
-		w.Write([]byte("{\"valid\": true}"))
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"cleaned_body\": \"%s\"}", sanitized))
 	})
 
 	server := http.Server{
