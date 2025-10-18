@@ -144,8 +144,20 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
 		return
 	}
+	data, err := json.Marshal(struct {
+		database.User
+		Token string `json:"token"`
+	}{
+		User:  user,
+		Token: tokenString,
+	})
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
 	w.WriteHeader(200)
-	w.Write(fmt.Appendf(make([]byte, 0), "{\"token\": \"%s\"}", tokenString))
+	w.Write(data)
 }
 
 func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
