@@ -124,10 +124,29 @@ func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, r *http.Request) 
 	w.Write(chirpJson)
 }
 
-func (cfg *apiConfig) handleRefreshToken(w http.ResponseWriter, r *http.Request) {
-	refreshToken, err := getBearerToken(r)
+func (cfg *apiConfig) handleRevokeToken(w http.ResponseWriter, r *http.Request) {
+	token, err := getBearerToken(r)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		w.Write([]byte("{\"error\": \"Unauthorized\"}"))
+		return
+	}
+	err = cfg.db.RevokeRefreshToken(context.Background(), token)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	w.WriteHeader(204)
+	w.Write([]byte{})
+}
+
+func (cfg *apiConfig) handleRefreshToken(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	refreshToken, err := getBearerToken(r)
+	if err != nil {
 		w.WriteHeader(401)
 		w.Write([]byte("{\"error\": \"Unauthorized\"}"))
 		return
