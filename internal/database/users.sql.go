@@ -17,7 +17,7 @@ RETURNING id, created_at, updated_at, email, hashed_password
 
 type CreateUserParams struct {
 	Email          string `json:"email"`
-	HashedPassword string `json:"hashed_password"`
+	HashedPassword string `json:"-"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {

@@ -133,7 +133,6 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\": \"Incorrect email or password\"}"))
 		return
 	}
-	user.HashedPassword = ""
 	userJson, err := json.Marshal(user)
 	if err != nil {
 		w.WriteHeader(500)
@@ -180,7 +179,6 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
 		return
 	}
-	user.HashedPassword = "" // Hide the hashed password for security reasons
 	userJson, err := json.Marshal(user)
 	if err != nil {
 		w.WriteHeader(500)
