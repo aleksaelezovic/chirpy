@@ -126,9 +126,8 @@ func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, r *http.Request) 
 
 func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Email     string `json:"email"`
-		Password  string `json:"password"`
-		ExpiresIn int    `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -148,21 +147,37 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\": \"Incorrect email or password\"}"))
 		return
 	}
-	if body.ExpiresIn == 0 {
-		body.ExpiresIn = 3600 // Default expiration time in seconds = 1 hour
-	}
-	tokenString, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Duration(body.ExpiresIn)*time.Second)
+	tokenString, err := auth.MakeJWT(user.ID, cfg.jwtSecret, 1*time.Hour)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
 		return
 	}
+	refreshTokenString, err := auth.MakeRefreshToken()
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	_, err = cfg.db.CreateRefreshToken(context.Background(), database.CreateRefreshTokenParams{
+		Token:     refreshTokenString,
+		UserID:    user.ID,
+		ExpiresAt: time.Now().Add(60 * 24 * time.Hour),
+	})
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+
 	data, err := json.Marshal(struct {
 		database.User
-		Token string `json:"token"`
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}{
-		User:  user,
-		Token: tokenString,
+		User:         user,
+		Token:        tokenString,
+		RefreshToken: refreshTokenString,
 	})
 	if err != nil {
 		w.WriteHeader(500)
