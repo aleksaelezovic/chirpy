@@ -17,6 +17,7 @@ type apiConfig struct {
 	db             *database.Queries
 	isDev          bool
 	jwtSecret      string
+	polkaApiKey    string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -35,9 +36,10 @@ func main() {
 	}
 	defer db.Close()
 	cfg := &apiConfig{
-		db:        database.New(db),
-		isDev:     os.Getenv("PLATFORM") == "dev",
-		jwtSecret: os.Getenv("JWT_SECRET"),
+		db:          database.New(db),
+		isDev:       os.Getenv("PLATFORM") == "dev",
+		jwtSecret:   os.Getenv("JWT_SECRET"),
+		polkaApiKey: os.Getenv("POLKA_KEY"),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {

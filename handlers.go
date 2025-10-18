@@ -15,6 +15,12 @@ import (
 )
 
 func (cfg *apiConfig) handlePolkaWebhook(w http.ResponseWriter, r *http.Request) {
+	apiKey, err := getApiKey(r)
+	if err != nil || apiKey != cfg.polkaApiKey {
+		sendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	var body struct {
 		Event string `json:"event"`
 		Data  struct {
@@ -30,7 +36,7 @@ func (cfg *apiConfig) handlePolkaWebhook(w http.ResponseWriter, r *http.Request)
 		w.Write([]byte{})
 		return
 	}
-	_, err := cfg.db.ChangeChirpyRedStatus(context.Background(), database.ChangeChirpyRedStatusParams{
+	_, err = cfg.db.ChangeChirpyRedStatus(context.Background(), database.ChangeChirpyRedStatusParams{
 		ID:          body.Data.UserID,
 		IsChirpyRed: true,
 	})

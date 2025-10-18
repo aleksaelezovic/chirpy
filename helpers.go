@@ -18,6 +18,14 @@ func getBearerToken(r *http.Request) (string, error) {
 	return "", errors.New("invalid token")
 }
 
+func getApiKey(r *http.Request) (string, error) {
+	token := r.Header.Get("Authorization")
+	if len(token) > 7 && strings.ToUpper(token[:7]) == "APIKEY " {
+		return token[7:], nil
+	}
+	return "", errors.New("invalid apikey")
+}
+
 func sendJSONResponse(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
