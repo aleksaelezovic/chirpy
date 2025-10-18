@@ -62,11 +62,24 @@ func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, r *http.Request)
 }
 
 func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		UserID uuid.UUID `json:"user_id"`
-		Body   string    `json:"body"`
-	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	tokenString, err := getBearerToken(r)
+	if err != nil {
+		w.WriteHeader(401)
+		w.Write([]byte("{\"error\": \"Unauthorized\"}"))
+		return
+	}
+	userID, err := auth.ValidateJWT(tokenString, cfg.jwtSecret)
+	if err != nil {
+		w.WriteHeader(401)
+		w.Write([]byte("{\"error\": \"Unauthorized\"}"))
+		return
+	}
+
+	var body struct {
+		Body string `json:"body"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		w.WriteHeader(400)
 		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
@@ -93,7 +106,7 @@ func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, r *http.Request) 
 	sanitizedBody := strings.Join(newWords, " ")
 
 	chirp, err := cfg.db.CreateChirp(context.Background(), database.CreateChirpParams{
-		UserID: body.UserID,
+		UserID: userID,
 		Body:   sanitizedBody,
 	})
 	if err != nil {
