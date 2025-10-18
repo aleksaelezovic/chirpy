@@ -14,6 +14,43 @@ import (
 	"github.com/google/uuid"
 )
 
+func (cfg *apiConfig) handleDeleteChirp(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		sendErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	token, err := getBearerToken(r)
+	if err != nil {
+		sendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		sendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	chirp, err := cfg.db.GetChirpByID(context.Background(), id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendErrorResponse(w, http.StatusNotFound, "Not found")
+			return
+		}
+		sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if chirp.UserID != userID {
+		sendErrorResponse(w, http.StatusForbidden, "Unauthorized")
+		return
+	}
+	if err = cfg.db.DeleteChirp(context.Background(), id); err != nil {
+		sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.WriteHeader(204)
+	w.Write([]byte{})
+}
+
 func (cfg *apiConfig) handleGetChirpByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
