@@ -47,7 +47,7 @@ func main() {
 		w.WriteHeader(200)
 		w.Write([]byte("OK"))
 	})
-	fsHandler := http.StripPrefix("/app", http.FileServer(http.Dir(".")))
+	fsHandler := http.StripPrefix("/app", http.FileServer(http.Dir("./public")))
 	mux.Handle("/app/", cfg.middlewareMetricsInc(fsHandler))
 	mux.HandleFunc("GET /admin/metrics", cfg.metricsHandler)
 	mux.HandleFunc("POST /admin/reset", cfg.resetHandler)
