@@ -65,23 +65,9 @@ func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	oldWords := strings.Split(body.Body, " ")
-	newWords := make([]string, len(oldWords))
-	for i, word := range oldWords {
-		for _, profaneWord := range profaneWords {
-			if strings.EqualFold(strings.ToLower(word), strings.ToLower(profaneWord)) {
-				newWords[i] = "****"
-				break
-			} else {
-				newWords[i] = word
-			}
-		}
-	}
-	sanitizedBody := strings.Join(newWords, " ")
-
 	chirp, err := cfg.db.CreateChirp(context.Background(), database.CreateChirpParams{
 		UserID: userID,
-		Body:   sanitizedBody,
+		Body:   sanitizeChirpBody(body.Body),
 	})
 	if err != nil {
 		sendErrorResponse(w, http.StatusInternalServerError, err.Error())

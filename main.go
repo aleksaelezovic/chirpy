@@ -26,8 +26,6 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	})
 }
 
-var profaneWords = []string{"kerfuffle", "sharbert", "fornax"}
-
 func main() {
 	godotenv.Load()
 	db, err := sql.Open("postgres", os.Getenv("DB_URL"))
