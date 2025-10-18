@@ -6,12 +6,66 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/aleksaelezovic/chirpy/internal/database"
+	"github.com/google/uuid"
 )
+
+func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		UserID uuid.UUID `json:"user_id"`
+		Body   string    `json:"body"`
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.WriteHeader(400)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	if len(body.Body) > 140 {
+		w.WriteHeader(400)
+		w.Write([]byte("{\"error\": \"Chirp is too long\"}"))
+		return
+	}
+
+	oldWords := strings.Split(body.Body, " ")
+	newWords := make([]string, len(oldWords))
+	for i, word := range oldWords {
+		for _, profaneWord := range profaneWords {
+			if strings.EqualFold(strings.ToLower(word), strings.ToLower(profaneWord)) {
+				newWords[i] = "****"
+				break
+			} else {
+				newWords[i] = word
+			}
+		}
+	}
+	sanitizedBody := strings.Join(newWords, " ")
+
+	chirp, err := cfg.db.CreateChirp(context.Background(), database.CreateChirpParams{
+		UserID: body.UserID,
+		Body:   sanitizedBody,
+	})
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	chirpJson, err := json.Marshal(chirp)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	w.WriteHeader(201)
+	w.Write(chirpJson)
+}
 
 func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Email string `json:"email"`
 	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		w.WriteHeader(400)
 		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
@@ -41,38 +95,6 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(201)
 	w.Write(userJson)
-}
-
-func handleChirpValidation(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Body string `json:"body"`
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		w.WriteHeader(400)
-		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
-		return
-	}
-	if len(body.Body) > 140 {
-		w.WriteHeader(400)
-		w.Write([]byte("{\"error\": \"Chirp is too long\"}"))
-		return
-	}
-	oldWords := strings.Split(body.Body, " ")
-	newWords := make([]string, len(oldWords))
-	for i, word := range oldWords {
-		for _, profaneWord := range profaneWords {
-			if strings.EqualFold(strings.ToLower(word), strings.ToLower(profaneWord)) {
-				newWords[i] = "****"
-				break
-			} else {
-				newWords[i] = word
-			}
-		}
-	}
-	sanitized := strings.Join(newWords, " ")
-	w.WriteHeader(200)
-	w.Write(fmt.Appendf(make([]byte, 0), "{\"cleaned_body\": \"%s\"}", sanitized))
 }
 
 func (cfg *apiConfig) metricsHandler(w http.ResponseWriter, r *http.Request) {
