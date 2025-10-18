@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/aleksaelezovic/chirpy/internal/auth"
 	"github.com/aleksaelezovic/chirpy/internal/database"
@@ -133,14 +134,14 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\": \"Incorrect email or password\"}"))
 		return
 	}
-	userJson, err := json.Marshal(user)
+	tokenString, err := auth.MakeJWT(user.ID, cfg.jwtSecret, 1*time.Hour)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
 		return
 	}
 	w.WriteHeader(200)
-	w.Write(userJson)
+	w.Write(fmt.Appendf(make([]byte, 0), "{\"token\": \"%s\"}", tokenString))
 }
 
 func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {

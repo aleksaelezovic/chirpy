@@ -16,6 +16,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	isDev          bool
+	jwtSecret      string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -35,7 +36,11 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
-	cfg := &apiConfig{db: database.New(db), isDev: os.Getenv("PLATFORM") == "dev"}
+	cfg := &apiConfig{
+		db:        database.New(db),
+		isDev:     os.Getenv("PLATFORM") == "dev",
+		jwtSecret: os.Getenv("JWT_SECRET"),
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
