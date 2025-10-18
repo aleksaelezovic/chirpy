@@ -14,6 +14,38 @@ import (
 	"github.com/google/uuid"
 )
 
+func (cfg *apiConfig) handlePolkaWebhook(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Event string `json:"event"`
+		Data  struct {
+			UserID uuid.UUID `json:"user_id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sendErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if body.Event != "user.upgraded" {
+		w.WriteHeader(204)
+		w.Write([]byte{})
+		return
+	}
+	_, err := cfg.db.ChangeChirpyRedStatus(context.Background(), database.ChangeChirpyRedStatusParams{
+		ID:          body.Data.UserID,
+		IsChirpyRed: true,
+	})
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendErrorResponse(w, http.StatusNotFound, "Not found")
+		} else {
+			sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	w.WriteHeader(204)
+	w.Write([]byte{})
+}
+
 func (cfg *apiConfig) handleDeleteChirp(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
