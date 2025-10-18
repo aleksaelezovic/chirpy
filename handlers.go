@@ -11,6 +11,24 @@ import (
 	"github.com/google/uuid"
 )
 
+func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, r *http.Request) {
+	chirps, err := cfg.db.GetAllChirps(context.Background())
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	chirpsJson, err := json.Marshal(chirps)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	w.WriteHeader(200)
+	w.Write(chirpsJson)
+}
+
 func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		UserID uuid.UUID `json:"user_id"`
