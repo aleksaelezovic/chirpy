@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/aleksaelezovic/chirpy/internal/auth"
 	"github.com/aleksaelezovic/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -109,9 +110,44 @@ func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, r *http.Request) 
 	w.Write(chirpJson)
 }
 
+func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.WriteHeader(400)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	user, err := cfg.db.GetUserByEmail(context.Background(), body.Email)
+	if err != nil {
+		w.WriteHeader(401)
+		w.Write([]byte("{\"error\": \"Incorrect email or password\"}"))
+		return
+	}
+	ok, err := auth.VerifyPassword(body.Password, user.HashedPassword)
+	if err != nil || !ok {
+		w.WriteHeader(401)
+		w.Write([]byte("{\"error\": \"Incorrect email or password\"}"))
+		return
+	}
+	user.HashedPassword = ""
+	userJson, err := json.Marshal(user)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	w.WriteHeader(200)
+	w.Write(userJson)
+}
+
 func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -124,7 +160,16 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\": \"Invalid email\"}"))
 		return
 	}
-	user, err := cfg.db.CreateUser(context.Background(), body.Email)
+	hashedPassword, err := auth.HashPassword(body.Password)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	user, err := cfg.db.CreateUser(context.Background(), database.CreateUserParams{
+		Email:          body.Email,
+		HashedPassword: hashedPassword,
+	})
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key") {
 			w.WriteHeader(409)
@@ -135,6 +180,7 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
 		return
 	}
+	user.HashedPassword = "" // Hide the hashed password for security reasons
 	userJson, err := json.Marshal(user)
 	if err != nil {
 		w.WriteHeader(500)
