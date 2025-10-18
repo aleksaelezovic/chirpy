@@ -51,7 +51,7 @@ func main() {
 	mux.Handle("/app/", cfg.middlewareMetricsInc(fsHandler))
 	mux.HandleFunc("GET /admin/metrics", cfg.metricsHandler)
 	mux.HandleFunc("POST /admin/reset", cfg.resetHandler)
-	mux.HandleFunc("GET /api/chirps", cfg.handleGetAllChirps)
+	mux.HandleFunc("GET /api/chirps", cfg.handleGetChirps)
 	mux.HandleFunc("GET /api/chirps/{id}", cfg.handleGetChirpByID)
 	mux.HandleFunc("POST /api/chirps", cfg.handleCreateChirp)
 	mux.HandleFunc("DELETE /api/chirps/{id}", cfg.handleDeleteChirp)

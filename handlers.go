@@ -107,8 +107,20 @@ func (cfg *apiConfig) handleGetChirpByID(w http.ResponseWriter, r *http.Request)
 	sendJSONResponse(w, http.StatusOK, chirp)
 }
 
-func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, r *http.Request) {
-	chirps, err := cfg.db.GetAllChirps(context.Background())
+func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
+	authorID := r.URL.Query().Get("author_id")
+	var chirps []database.Chirp
+	var err error
+	if authorID != "" {
+		authorUUID, err := uuid.Parse(authorID)
+		if err != nil {
+			sendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		chirps, err = cfg.db.GetChirpsByAuthor(context.Background(), authorUUID)
+	} else {
+		chirps, err = cfg.db.GetAllChirps(context.Background())
+	}
 	if err != nil {
 		sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
