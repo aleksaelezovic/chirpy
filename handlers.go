@@ -113,8 +113,9 @@ func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, r *http.Request) 
 
 func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+		ExpiresIn int    `json:"expires_in_seconds"`
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -134,7 +135,10 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\": \"Incorrect email or password\"}"))
 		return
 	}
-	tokenString, err := auth.MakeJWT(user.ID, cfg.jwtSecret, 1*time.Hour)
+	if body.ExpiresIn == 0 {
+		body.ExpiresIn = 3600 // Default expiration time in seconds = 1 hour
+	}
+	tokenString, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Duration(body.ExpiresIn)*time.Second)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
