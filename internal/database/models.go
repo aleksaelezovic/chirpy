@@ -20,7 +20,7 @@ type Chirp struct {
 }
 
 type RefreshToken struct {
-	Token     interface{}  `json:"token"`
+	Token     string       `json:"token"`
 	UserID    uuid.UUID    `json:"user_id"`
 	ExpiresAt time.Time    `json:"expires_at"`
 	RevokedAt sql.NullTime `json:"revoked_at"`
