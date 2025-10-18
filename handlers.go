@@ -86,9 +86,20 @@ func (cfg *apiConfig) metricsHandler(w http.ResponseWriter, r *http.Request) {
 </html>`, cfg.fileserverHits.Load()))
 }
 
-func (cfg *apiConfig) metricsResetHandler(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) resetHandler(w http.ResponseWriter, r *http.Request) {
+	if !cfg.isDev {
+		w.WriteHeader(403)
+		w.Write([]byte("Forbidden"))
+		return
+	}
 	cfg.fileserverHits.Store(0)
+	err := cfg.db.DeleteAllUsers(context.Background())
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("Internal Server Error"))
+		return
+	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(200)
-	w.Write([]byte("Metrics reset successfully."))
+	w.Write([]byte("Reset successfully."))
 }

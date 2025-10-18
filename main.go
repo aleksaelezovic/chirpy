@@ -15,6 +15,7 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
+	isDev          bool
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -34,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
-	cfg := &apiConfig{db: database.New(db)}
+	cfg := &apiConfig{db: database.New(db), isDev: os.Getenv("PLATFORM") == "dev"}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -44,7 +45,7 @@ func main() {
 	fsHandler := http.StripPrefix("/app", http.FileServer(http.Dir(".")))
 	mux.Handle("/app/", cfg.middlewareMetricsInc(fsHandler))
 	mux.HandleFunc("GET /admin/metrics", cfg.metricsHandler)
-	mux.HandleFunc("POST /admin/reset", cfg.metricsResetHandler)
+	mux.HandleFunc("POST /admin/reset", cfg.resetHandler)
 	mux.HandleFunc("POST /api/validate_chirp", handleChirpValidation)
 	mux.HandleFunc("POST /api/users", cfg.handleCreateUser)
 
