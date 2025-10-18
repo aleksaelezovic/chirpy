@@ -76,13 +76,13 @@ func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, r *http.Request) 
 	sendJSONResponse(w, http.StatusCreated, chirp)
 }
 
-func (cfg *apiConfig) handleRevokeToken(w http.ResponseWriter, r *http.Request) {
-	token, err := getBearerToken(r)
+func (cfg *apiConfig) handleRevokeRefreshToken(w http.ResponseWriter, r *http.Request) {
+	refreshToken, err := getBearerToken(r)
 	if err != nil {
 		sendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	err = cfg.db.RevokeRefreshToken(context.Background(), token)
+	err = cfg.db.RevokeRefreshToken(context.Background(), refreshToken)
 	if err != nil {
 		sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -192,6 +192,42 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sendJSONResponse(w, http.StatusCreated, user)
+}
+
+func (cfg *apiConfig) handleUpdateCredentials(w http.ResponseWriter, r *http.Request) {
+	token, err := getBearerToken(r)
+	if err != nil {
+		sendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		sendErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	var body struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sendErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	hashedPassword, err := auth.HashPassword(body.Password)
+	if err != nil {
+		sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	user, err := cfg.db.UpdateCredentials(context.Background(), database.UpdateCredentialsParams{
+		ID:             userID,
+		Email:          body.Email,
+		HashedPassword: hashedPassword,
+	})
+	if err != nil {
+		sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	sendJSONResponse(w, http.StatusOK, user)
 }
 
 func (cfg *apiConfig) metricsHandler(w http.ResponseWriter, r *http.Request) {
