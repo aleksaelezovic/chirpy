@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,6 +11,35 @@ import (
 	"github.com/aleksaelezovic/chirpy/internal/database"
 	"github.com/google/uuid"
 )
+
+func (cfg *apiConfig) handleGetChirpByID(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	chirp, err := cfg.db.GetChirpByID(context.Background(), id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(404)
+			w.Write([]byte("{\"error\": \"not found\"}"))
+			return
+		}
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	chirpJson, err := json.Marshal(chirp)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write(fmt.Appendf(make([]byte, 0), "{\"error\": \"%s\"}", err.Error()))
+		return
+	}
+	w.WriteHeader(200)
+	w.Write(chirpJson)
+}
 
 func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, r *http.Request) {
 	chirps, err := cfg.db.GetAllChirps(context.Background())
